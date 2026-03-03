@@ -63,7 +63,7 @@ def _analyze_with_gemini(text):
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-1.5-flash')
         # System Prompt ve Kullanıcı Metni birleştiriliyor
         full_prompt = f"{SYSTEM_PROMPT}\n\nAnaliz edilecek öğrenci metni: {text}"
         response = model.generate_content(full_prompt)
