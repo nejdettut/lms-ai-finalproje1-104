@@ -15,17 +15,18 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
 def get_api_key(key_name):
-    """
-    Önce .env dosyasını kontrol eder, bulamazsa
-    Streamlit Secrets (Bulut) sistemine bakar.
-    """
-    # Önce sistem ortam değişkenlerine bak (.env burayı doldurur)
+    # 1. Önce ortam değişkenlerine bak (Yerel çalışma için .env)
     api_key = os.getenv(key_name)
 
-    # Eğer orada yoksa (Deploy ortamındaysak) Streamlit Secrets'a bak
+    # 2. Eğer yoksa Streamlit Secrets'a bak (Bulut ortamı için)
     if not api_key:
-        if key_name in st.secrets:
-            api_key = st.secrets[key_name]
+        try:
+            # st.secrets'a erişirken hata oluşma ihtimaline karşı try-except
+            if key_name in st.secrets:
+                api_key = st.secrets[key_name]
+        except Exception:
+            # Secrets henüz yüklenmemişse veya erişilemiyorsa sessizce geç
+            pass
 
     return api_key
 
