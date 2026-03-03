@@ -64,38 +64,26 @@ def _analyze_with_gemini(text):
     try:
         genai.configure(api_key=api_key)
         
-        # Hata mesajındaki 'models/' takısını ve v1beta çakışmasını aşmak için 
-        # tam model yollarını deniyoruz. 2026'da en stabil yol budur.
-        available_models = [
-            'models/gemini-1.5-flash',
-            'models/gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'models/gemini-pro'
-        ]
+        # Kütüphane güncellendiğinde bu isim doğrudan çalışacaktır:
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        last_error = ""
         full_prompt = f"{SYSTEM_PROMPT}\n\nAnaliz edilecek öğrenci metni: {text}"
+        response = model.generate_content(full_prompt)
 
-        for model_name in available_models:
-            try:
-                # Modeli başlatırken isimlendirme hatasını minimize ediyoruz
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(full_prompt)
-                
-                if response and response.text:
-                    return {
-                        "source": f"Google Gemini ({model_name})",
-                        "analysis": response.text,
-                        "api_configured": True
-                    }
-            except Exception as e:
-                last_error = str(e)
-                continue
-        
-        return {"error": f"Model erişim hatası. Lütfen API anahtarınızı ve Google AI Studio kotalarınızı kontrol edin. Son hata: {last_error}", "api_configured": False}
+        # Yanıt kontrolü (Bazen boş dönebilir)
+        if not response or not response.text:
+             return {"error": "AI yanıt üretemedi (Boş yanıt).", "api_configured": True}
 
+        return {
+            "source": "Google Gemini (1.5 Flash)",
+            "analysis": response.text,
+            "api_configured": True
+        }
     except Exception as e:
-        return {"error": f"Genel Gemini Hatası: {str(e)}", "api_configured": False}
+        # Hata mesajı hala 404 ise, sorun kesinlikle kütüphane sürümüdür.
+        return {"error": f"Gemini Hatası: {str(e)}", "api_configured": False}
+
+
 # --- Groq Cloud Motoru ---
 def _analyze_with_groq(text):
     if Groq is None:
