@@ -55,7 +55,7 @@ def analyze_text(text, provider="gemini"):
     else:
         return {"error": "Geçersiz sağlayıcı seçimi."}
 
-# --- Google Gemini Motoru ---
+# --- Google Gemini Motoru (Kesin Çözüm Versiyonu) ---
 def _analyze_with_gemini(text):
     api_key = get_api_key("GEMINI_API_KEY")
     if not api_key:
@@ -64,38 +64,35 @@ def _analyze_with_gemini(text):
     try:
         genai.configure(api_key=api_key)
         
-        # 2026 Güncel Model Listesi ve Hata Giderme Stratejisi
-        # Sistem sırasıyla bu modelleri deneyecek:
+        # Hata mesajındaki 'models/' takısını ve v1beta çakışmasını aşmak için 
+        # tam model yollarını deniyoruz. 2026'da en stabil yol budur.
         available_models = [
-            'gemini-1.5-flash',   # 1. Tercih (Hızlı ve Stabil)
-            'gemini-2.0-flash',   # 2. Tercih (En Yeni Nesil)
-            'gemini-1.5-pro',     # 3. Tercih (Yüksek Zeka)
-            'gemini-pro'          # 4. Tercih (Legacy/Eski fallback)
+            'models/gemini-1.5-flash',
+            'models/gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'models/gemini-pro'
         ]
         
-        model = None
         last_error = ""
+        full_prompt = f"{SYSTEM_PROMPT}\n\nAnaliz edilecek öğrenci metni: {text}"
 
-        # Modelleri sırayla deniyoruz
         for model_name in available_models:
             try:
+                # Modeli başlatırken isimlendirme hatasını minimize ediyoruz
                 model = genai.GenerativeModel(model_name)
-                # Test amaçlı küçük bir deneme değil, direkt içeriği üretmeyi deniyoruz
-                full_prompt = f"{SYSTEM_PROMPT}\n\nAnaliz edilecek öğrenci metni: {text}"
                 response = model.generate_content(full_prompt)
                 
-                # Eğer buraya kadar geldiyse model çalışmıştır
-                return {
-                    "source": f"Google Gemini ({model_name})",
-                    "analysis": response.text,
-                    "api_configured": True
-                }
+                if response and response.text:
+                    return {
+                        "source": f"Google Gemini ({model_name})",
+                        "analysis": response.text,
+                        "api_configured": True
+                    }
             except Exception as e:
                 last_error = str(e)
-                continue # Hata verirse bir sonraki modeli dene
+                continue
         
-        # Hiçbir model çalışmazsa son hatayı dön
-        return {"error": f"Tüm Gemini modelleri denendi ancak başarısız oldu. Son Hata: {last_error}", "api_configured": False}
+        return {"error": f"Model erişim hatası. Lütfen API anahtarınızı ve Google AI Studio kotalarınızı kontrol edin. Son hata: {last_error}", "api_configured": False}
 
     except Exception as e:
         return {"error": f"Genel Gemini Hatası: {str(e)}", "api_configured": False}
