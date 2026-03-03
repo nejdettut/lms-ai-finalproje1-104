@@ -63,19 +63,42 @@ def _analyze_with_gemini(text):
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
-        # System Prompt ve Kullanıcı Metni birleştiriliyor
-        full_prompt = f"{SYSTEM_PROMPT}\n\nAnaliz edilecek öğrenci metni: {text}"
-        response = model.generate_content(full_prompt)
+        
+        # 2026 Güncel Model Listesi ve Hata Giderme Stratejisi
+        # Sistem sırasıyla bu modelleri deneyecek:
+        available_models = [
+            'gemini-1.5-flash',   # 1. Tercih (Hızlı ve Stabil)
+            'gemini-2.0-flash',   # 2. Tercih (En Yeni Nesil)
+            'gemini-1.5-pro',     # 3. Tercih (Yüksek Zeka)
+            'gemini-pro'          # 4. Tercih (Legacy/Eski fallback)
+        ]
+        
+        model = None
+        last_error = ""
 
-        return {
-            "source": "Google Gemini",
-            "analysis": response.text,
-            "api_configured": True
-        }
+        # Modelleri sırayla deniyoruz
+        for model_name in available_models:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # Test amaçlı küçük bir deneme değil, direkt içeriği üretmeyi deniyoruz
+                full_prompt = f"{SYSTEM_PROMPT}\n\nAnaliz edilecek öğrenci metni: {text}"
+                response = model.generate_content(full_prompt)
+                
+                # Eğer buraya kadar geldiyse model çalışmıştır
+                return {
+                    "source": f"Google Gemini ({model_name})",
+                    "analysis": response.text,
+                    "api_configured": True
+                }
+            except Exception as e:
+                last_error = str(e)
+                continue # Hata verirse bir sonraki modeli dene
+        
+        # Hiçbir model çalışmazsa son hatayı dön
+        return {"error": f"Tüm Gemini modelleri denendi ancak başarısız oldu. Son Hata: {last_error}", "api_configured": False}
+
     except Exception as e:
-        return {"error": f"Gemini Hatası: {str(e)}", "api_configured": False}
-
+        return {"error": f"Genel Gemini Hatası: {str(e)}", "api_configured": False}
 # --- Groq Cloud Motoru ---
 def _analyze_with_groq(text):
     if Groq is None:
